@@ -1,0 +1,5 @@
+config.py
+log/
+users.txt
+sent-users/
+__pycache__/
