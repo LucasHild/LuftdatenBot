@@ -1,5 +1,5 @@
 config.py
 log/
-users.txt
+users.db
 sent-users/
 __pycache__/
