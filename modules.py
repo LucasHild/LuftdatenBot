@@ -34,7 +34,7 @@ def get_value(sensor_id):
 
 def logging(text):
     """Log status to log/luftdaten-telegram + date + .log"""
-    filename = "log/luftdaten-telegram-" + str(time.localtime()[0]) + "-" + str(time.localtime()[1]) + "-" +\
+    filename = "/home/pi/Documents/Luftdaten-Notification/log/luftdaten-telegram-" + str(time.localtime()[0]) + "-" + str(time.localtime()[1]) + "-" +\
                (str(time.localtime()[2])) + ".log"
     logging_time = str(time.localtime()[3]) + ":" + str(time.localtime()[4]) + ":" + str(time.localtime()[5])
     with open(filename, "a") as f:
@@ -44,7 +44,7 @@ def logging(text):
 
 def get_users():
     """Get users from database"""
-    conn = sqlite3.connect("users.db")
+    conn = sqlite3.connect("/home/pi/Documents/Luftdaten-Notification/users.db")
     c = conn.cursor()
 
     c.execute("SELECT * FROM users")
@@ -56,7 +56,7 @@ def get_users():
 
 def get_users_not_sent():
     """Get users from database where sent_today != today"""
-    conn = sqlite3.connect("users.db")
+    conn = sqlite3.connect("/home/pi/Documents/Luftdaten-Notification/users.db")
     c = conn.cursor()
 
     date = str(time.localtime()[0]) + "-" + str(time.localtime()[1]) + "-" + (str(time.localtime()[2]))
@@ -69,7 +69,7 @@ def get_users_not_sent():
 
 def add_user_to_db(sensor_id, chat_id, limitation):
     """Save new user to users"""
-    conn = sqlite3.connect("users.db")
+    conn = sqlite3.connect("/home/pi/Documents/Luftdaten-Notification/users.db")
     c = conn.cursor()
 
     c.execute("INSERT INTO users (sensor_id, chat_id, limitation, sent_message) VALUES (?, ?, ?, ?)",
@@ -81,7 +81,7 @@ def add_user_to_db(sensor_id, chat_id, limitation):
 
 
 def add_message_to_sent_message(chat_id):
-    conn = sqlite3.connect("users.db")
+    conn = sqlite3.connect("/home/pi/Documents/Luftdaten-Notification/users.db")
     c = conn.cursor()
 
     date = str(time.localtime()[0]) + "-" + str(time.localtime()[1]) + "-" + (str(time.localtime()[2]))
