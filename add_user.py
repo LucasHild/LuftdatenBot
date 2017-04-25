@@ -65,7 +65,7 @@ def welcome(sensor_id, chat_id, limitation):
                  chat_id)
     modules.send("Deine Daten: Sensor-ID: " + sensor_id + " Limit: " + limitation + " Partikel pro m3", chat_id)
     value = modules.get_value(sensor_id)
-    modules.send("Aktuell misst dein Feinstaub-Senosr: " + str(value) + " Partikel pro m3.", chat_id)
+    modules.send("Aktuell misst dein Feinstaub-Sensor: " + str(value) + " Partikel pro m3.", chat_id)
     modules.send("[Weitere Infos](https://github.com/Lanseuo/Luftdaten-Notification)", chat_id)
     modules.logging("Welcome message to " + chat_id)
 
