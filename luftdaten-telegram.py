@@ -3,10 +3,19 @@
 
 import modules
 import config
-import add_user
+from telegram.ext import Updater
+import logging
+
+updater = Updater(token=config.bottoken)
+
+logging.basicConfig(
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        level=logging.INFO,
+        filename="bot.log")
+logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
-    modules.logging("Started luftdaten-telegram.py")
+    logger.info("Started luftdaten-telegram.py")
 
     users = modules.get_users_not_sent()
     for user in users:
@@ -19,11 +28,9 @@ if __name__ == "__main__":
 
         # Send value if necessary
         if int(value) > int(limitation):
-            modules.send("Achtung: Dein Feinstaubsensor hat " + str(value) + " Partikel pro m3 gemessen.", chat_id)
-            modules.logging("Sent message to " + str(chat_id))
+            updater.bot.send_message(chat_id=int(chat_id),
+                                     text="Achtung: Dein Feinstaubsensor hat " + str(value) + " Partikel pro m3 gemessen.")
+            logger.info("Sent message to " + str(chat_id))
             modules.add_message_to_sent_message(chat_id)
 
-    # Check for new users
-    add_user.check_for_new_users()
-
-    modules.logging("Finished luftdaten-telegram.py")
+    logger.info("Finished luftdaten-telegram.py")

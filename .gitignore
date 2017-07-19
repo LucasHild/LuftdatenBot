@@ -1,5 +1,5 @@
 config.py
-log/
 users.db
-sent-users/
 __pycache__/
+.idea/
+*.log
