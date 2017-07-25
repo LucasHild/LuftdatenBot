@@ -199,10 +199,41 @@ def getvalue(bot, update):
         logger.info("User {user} called /getvalue".format(user=update.message.from_user.username))
 
     else:
-        logger.info("User {user} called /getvalue not being in the database", user=update.message.from_user.username)
+        logger.info("User {user} called /getvalue not being in the database".format(user=update.message.from_user.username))
         bot.send_message(chat_id=update.message.chat_id, text="Du musst mich zuerst mit /start einrichten!")
 
     return ConversationHandler.END
+
+
+def details(bot, update):
+    logger.info("User {user} asked for details".format(user = update.message.from_user.username))
+    chat_id = update.message.chat_id
+    conn = sqlite3.connect(config.database_location)
+    c = conn.cursor()
+
+    c.execute("SELECT * FROM users WHERE chat_id = ?", (int(chat_id),))
+    fetched_users = c.fetchall()
+    c.close()
+    conn.close()
+
+    # User didn't already /start
+    if fetched_users == []:
+        logger.info(
+            "User {user} called /setsensorid not being in the database".format(user=update.message.from_user.username))
+        bot.send_message(chat_id=update.message.chat_id, text="Richte mich erst einmal mit /start ein!")
+        return ConversationHandler.END
+
+    user = fetched_users[0]
+    value = modules.get_value(user[1])
+
+    bot.send_message(chat_id=update.message.chat_id,
+                     text="Sensor-ID: " + str(user[1]) + "\n" +
+                     "Chat-ID: " + str(update.message.chat_id) + "\n" +
+                     "Limit: " + str(user[3]) + "\n" +
+                     "Messung: " + str(value) + " Partikel pro m3")
+    return ConversationHandler.END
+
+
 
 def help(bot, update):
     help_message = """
@@ -215,6 +246,7 @@ Du hast folgende Möglichkeiten:
 /setlimit - Limit festlegen
 
 /getvalue - aktueller Wert deines Sensors
+/details - Details über deinen Sensor
     """
     logger.info("User {user} asked for help".format(user=update.message.from_user.username))
     bot.send_message(chat_id=update.message.chat_id, text=help_message)
@@ -249,6 +281,7 @@ def main():
             CommandHandler("getvalue", getvalue),
             CommandHandler("setsensorid", setsensorid),
             CommandHandler("setlimit", setlimit),
+            CommandHandler("details", details),
             CommandHandler("help", help)
         ],
 
