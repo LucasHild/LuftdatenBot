@@ -6,7 +6,7 @@ from telegram.ext import Updater
 logging.basicConfig(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         level=logging.INFO,
-        filename="bot.log")
+        filename="logs/news.log")
 logger = logging.getLogger(__name__)
 
 updater = Updater(token=config.bottoken)
@@ -44,6 +44,7 @@ def main():
     for user in fetched_users:
         updater.bot.send_message(chat_id=user[2], text=message)
 
+    logger.info("Send news to all users: {message}".format(message=message))
 
 if __name__ == "__main__":
     main()

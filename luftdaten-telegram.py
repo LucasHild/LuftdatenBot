@@ -11,7 +11,7 @@ updater = Updater(token=config.bottoken)
 logging.basicConfig(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         level=logging.INFO,
-        filename="bot.log")
+        filename="logs/luftdaten-telegram.log")
 logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":

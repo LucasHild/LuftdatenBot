@@ -9,7 +9,7 @@ import logging
 logging.basicConfig(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         level=logging.INFO,
-        filename="bot.log")
+        filename="logs/bot.log")
 logger = logging.getLogger(__name__)
 
 START_SENSORID, START_LIMIT = range(2)
@@ -147,7 +147,7 @@ def setlimit(bot, update):
         limitation = update.message.text.split(" ")[1]
     except IndexError:
         # Only command given (no value)
-        logger.info("User {user} called /setlimit without value")
+        logger.info("User {user} called /setlimit without value".format(user=update.message.from_user.username))
         bot.send_message(chat_id=update.message.chat_id,
                          text="Du musst einen Wert angeben! Beispiel: /setlimit 50")
         return ConversationHandler.END
@@ -206,7 +206,7 @@ def getvalue(bot, update):
 
 
 def details(bot, update):
-    logger.info("User {user} asked for details".format(user = update.message.from_user.username))
+    logger.info("User {user} asked for details".format(user=update.message.from_user.username))
     chat_id = update.message.chat_id
     conn = sqlite3.connect(config.database_location)
     c = conn.cursor()
