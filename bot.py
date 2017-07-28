@@ -4,12 +4,14 @@ import telegram
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler
 import sqlite3
 import logging
+import os
+
 
 # Setup logging
 logging.basicConfig(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         level=logging.INFO,
-        filename="logs/bot.log")
+        filename=os.path.dirname(os.path.realpath(__file__)) + "/logs/bot.log")
 logger = logging.getLogger(__name__)
 
 START_SENSORID, START_LIMIT = range(2)
@@ -272,6 +274,8 @@ def error_callback(bot, update, error):
 
 
 def main():
+    logger.info("Started bot.py")
+
     updater = Updater(token=config.bottoken)
     dispatcher = updater.dispatcher
 

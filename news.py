@@ -2,11 +2,13 @@ import config
 import sqlite3
 import logging
 from telegram.ext import Updater
+import os
+
 
 logging.basicConfig(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         level=logging.INFO,
-        filename="logs/news.log")
+        filename=os.path.dirname(os.path.realpath(__file__)) + "/logs/news.log")
 logger = logging.getLogger(__name__)
 
 updater = Updater(token=config.bottoken)
