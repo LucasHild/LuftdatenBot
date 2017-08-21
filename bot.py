@@ -1,10 +1,15 @@
-import modules
-import config
-import telegram
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler
-import sqlite3
 import logging
 import os
+import requests
+import sqlite3
+import telegram
+
+import config
+import modules
+
+from math import atan2, cos, radians, sin, sqrt
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler
+from time import sleep
 
 
 # Setup logging
@@ -95,6 +100,7 @@ def start_setlimit(bot, update):
 
     return ConversationHandler.END
 
+
 def setsensorid(bot, update):
     try:
         sensor_id = update.message.text.split(" ")[1]
@@ -124,7 +130,6 @@ def setsensorid(bot, update):
             logger.info("User {user} called /setsensorid not being in the database".format(user=update.message.from_user.username))
             bot.send_message(chat_id=update.message.chat_id, text="Richte mich erst einmal mit /start ein!")
             return ConversationHandler.END
-
 
         conn = sqlite3.connect(config.database_location)
         c = conn.cursor()
@@ -236,6 +241,66 @@ def details(bot, update):
     return ConversationHandler.END
 
 
+def location(bot, update):
+    logger.info("User {user} sent location: {latitude} {longitude}".format(user=update.message.from_user.username,
+                                                                           latitude=str(update.message.location["latitude"]),
+                                                                           longitude=str(update.message.location["longitude"])))
+    # Get position from message
+    search_lat = update.message.location["latitude"]
+    search_lon = update.message.location["longitude"]
+    search_pos = (search_lat, search_lon)
+
+    # Get location and id of sensors from API
+    print(10*"1")
+    r = requests.get("https://api.luftdaten.info/static/v2/data.dust.min.json")
+    print(10*"2")
+    sensors = r.json()
+
+    # Get the sensor with the smallest distance to search_pos
+    low_dist = float('inf')
+    closest_sensor = None
+    closest_sensor_pos = None
+    for sensor in sensors:
+        sensor_id = int(sensor["sensor"]["id"])
+        sensor_pos = (float(sensor["location"]["latitude"]), float(sensor["location"]["longitude"]))
+
+        # Calculate the distance between this sensor (i) and search_pos
+        dist = sqrt(((search_pos[0] - sensor_pos[0]) ** 2) + ((search_pos[1] - sensor_pos[1]) ** 2))
+
+        # If distance of this sensor (i) is smaller then the smallest, set new closest_sensor
+        if dist < low_dist:
+            low_dist = dist
+            closest_sensor = sensor_id
+            closest_sensor_pos = sensor_pos
+
+    # Calculate distance between sensor_pos and closest_sensor
+    lat1, lon1 = search_pos
+    lat2, lon2 = closest_sensor_pos
+    dlat = radians(lat2 - lat1)
+    dlon = radians(lon2 - lon1)
+    a = sin(dlat / 2) * sin(dlat / 2) + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon / 2) * sin(dlon / 2)
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+    distance = round(6371 * c)
+    if distance < 1000:
+        distance *= 1000
+        distance = str(distance) + "m"
+    elif distance >= 1000:
+        distance = str(distance) + "km"
+
+    # Send response to user
+    bot.send_location(chat_id=update.message.chat_id, latitude=closest_sensor_pos[0], longitude=closest_sensor_pos[1])
+    response = """
+Nächste Sensor: {closest_sensor}
+Entfernung: {distance}
+Messung: {value} Partikel pro m3
+
+Schicke mir /setsensorid {closest_sensor}, um ihn als deinen Hauptsensor festzulegen
+    """.format(closest_sensor=str(closest_sensor), distance=distance, value=str(modules.get_value(closest_sensor)))
+    bot.send_message(chat_id=update.message.chat_id,
+                     text=response)
+
+    return ConversationHandler.END
+
 
 def help(bot, update):
     help_message = """
@@ -255,14 +320,18 @@ Du hast folgende Möglichkeiten:
 
     return ConversationHandler.END
 
+
 def not_command(bot, update):
     logger.info("User {user} sent unknown command: {command}".format(user=update.message.from_user.username, command=update.message.text))
     bot.send_message(chat_id=update.message.chat_id,
                      text="Leider kenne ich diesen Befehl mit. Verwende /help um alle Befehle zu sehen.")
     return ConversationHandler.END
 
+
 def cancel(bot, update):
     logger.info("User {user} canceled the conversation.".format(user=update.message.from_user.username))
+    bot.send_message(chat_id=update.message.chat_id,
+                     text="Abgebrochen ...")
     return ConversationHandler.END
 
 
@@ -286,7 +355,8 @@ def main():
             CommandHandler("setsensorid", setsensorid),
             CommandHandler("setlimit", setlimit),
             CommandHandler("details", details),
-            CommandHandler("help", help)
+            CommandHandler("help", help),
+            MessageHandler(Filters.location, location),
         ],
 
         states={
@@ -304,4 +374,6 @@ def main():
     updater.idle()
 
 if __name__ == "__main__":
+    # Wait 10 seconds until network is available
+    sleep(10)
     main()
