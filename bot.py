@@ -1,3 +1,4 @@
+import location_modules
 import logging
 import os
 import requests
@@ -41,7 +42,7 @@ def start(bot, update):
     bot.send_message(chat_id=update.message.chat_id,
                      text="Herzlich Willkommen bei [Luftdaten-Notification](https://github.com/Lanseuo/Luftdaten-Notification)!")
     bot.send_message(chat_id=update.message.chat_id,
-                     text="Wie lautet deine Sensor-ID?")
+                     text="Wie lautet deine Sensor-ID? Schicke mir deine ID oder sende mir deinen Standort!")
     return START_SENSORID
 
 
@@ -78,6 +79,69 @@ def start_setsensorid(bot, update):
         bot.send_message(chat_id=update.message.chat_id,
                          text="Sensor " + sensor_id + " ist nicht verfügbar! Überprüfe deine Sensor ID und führe gebe die ID erneut ein!")
         return START_SENSORID
+
+    bot.send_message(chat_id=update.message.chat_id,
+                     text="Bei welchem Limit möchtest Du benachrichtigt werden?")
+    return START_LIMIT
+
+
+def start_setsensorid_location(bot, update):
+    logger.info("User {user} sent location: {latitude} {longitude} at /start to setsensorid".format(user=update.message.from_user.username,
+                                                                           latitude=str(
+                                                                               update.message.location["latitude"]),
+                                                                           longitude=str(
+                                                                               update.message.location["longitude"])))
+
+    chat_id = update.message.chat_id
+
+    # Get position from message
+    search_lat = update.message.location["latitude"]
+    search_lon = update.message.location["longitude"]
+    search_pos = (search_lat, search_lon)
+
+    # Get location and id of sensors from API
+    r = requests.get("https://api.luftdaten.info/static/v2/data.dust.min.json")
+    sensors = r.json()
+
+    # Get the sensor with the smallest distance to search_pos
+    closest_sensor, closest_sensor_pos = location_modules.closest_sensor(search_pos, sensors)
+
+    # Calculate distance between sensor_pos and closest_sensor
+    distance = location_modules.distance(search_pos, closest_sensor_pos)
+
+    # Send response to user
+    bot.send_location(chat_id=update.message.chat_id, latitude=closest_sensor_pos[0], longitude=closest_sensor_pos[1])
+    response = """
+Dieser Sensor wurde als dein Hauptsensor eingerichtet:
+
+Nächster Sensor: {closest_sensor}
+Entfernung: {distance}
+Messung: {value} Partikel pro m3
+    """.format(closest_sensor=str(closest_sensor), distance=distance, value=str(modules.get_value(closest_sensor)))
+    bot.send_message(chat_id=update.message.chat_id,
+                     text=response)
+
+    sensor_id = closest_sensor
+
+    # Check whether chat_id is already in database
+    conn = sqlite3.connect(config.database_location)
+    c = conn.cursor()
+
+    c.execute("SELECT * FROM users WHERE chat_id = ?", (int(chat_id),))
+    fetched_users = c.fetchall()
+    c.close()
+    conn.close()
+
+    # Save new user in db
+    conn = sqlite3.connect(config.database_location)
+    c = conn.cursor()
+    c.execute("INSERT INTO users (sensor_id, chat_id, limitation, sent_message) VALUES (?, ?, ?, ?)",
+              (sensor_id, chat_id, "", "never"))
+    conn.commit()
+    c.close()
+    conn.close()
+
+    logger.info("User {user} set sensor_id {sensor_id} with location at /start".format(user=update.message.from_user.username, sensor_id=sensor_id))
 
     bot.send_message(chat_id=update.message.chat_id,
                      text="Bei welchem Limit möchtest Du benachrichtigt werden?")
@@ -251,46 +315,19 @@ def location(bot, update):
     search_pos = (search_lat, search_lon)
 
     # Get location and id of sensors from API
-    print(10*"1")
     r = requests.get("https://api.luftdaten.info/static/v2/data.dust.min.json")
-    print(10*"2")
     sensors = r.json()
 
     # Get the sensor with the smallest distance to search_pos
-    low_dist = float('inf')
-    closest_sensor = None
-    closest_sensor_pos = None
-    for sensor in sensors:
-        sensor_id = int(sensor["sensor"]["id"])
-        sensor_pos = (float(sensor["location"]["latitude"]), float(sensor["location"]["longitude"]))
-
-        # Calculate the distance between this sensor (i) and search_pos
-        dist = sqrt(((search_pos[0] - sensor_pos[0]) ** 2) + ((search_pos[1] - sensor_pos[1]) ** 2))
-
-        # If distance of this sensor (i) is smaller then the smallest, set new closest_sensor
-        if dist < low_dist:
-            low_dist = dist
-            closest_sensor = sensor_id
-            closest_sensor_pos = sensor_pos
+    closest_sensor, closest_sensor_pos = location_modules.closest_sensor(search_pos, sensors)
 
     # Calculate distance between sensor_pos and closest_sensor
-    lat1, lon1 = search_pos
-    lat2, lon2 = closest_sensor_pos
-    dlat = radians(lat2 - lat1)
-    dlon = radians(lon2 - lon1)
-    a = sin(dlat / 2) * sin(dlat / 2) + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon / 2) * sin(dlon / 2)
-    c = 2 * atan2(sqrt(a), sqrt(1 - a))
-    distance = round(6371 * c)
-    if distance < 1000:
-        distance *= 1000
-        distance = str(distance) + "m"
-    elif distance >= 1000:
-        distance = str(distance) + "km"
+    distance = location_modules.distance(search_pos, closest_sensor_pos)
 
     # Send response to user
     bot.send_location(chat_id=update.message.chat_id, latitude=closest_sensor_pos[0], longitude=closest_sensor_pos[1])
     response = """
-Nächste Sensor: {closest_sensor}
+Nächster Sensor: {closest_sensor}
 Entfernung: {distance}
 Messung: {value} Partikel pro m3
 
@@ -360,8 +397,9 @@ def main():
         ],
 
         states={
-            START_SENSORID: [MessageHandler(Filters.text, start_setsensorid)],
-            START_LIMIT: [MessageHandler(Filters.text, start_setlimit)]
+            START_SENSORID: [MessageHandler(Filters.text, start_setsensorid),
+                             MessageHandler(Filters.location, start_setsensorid_location)],
+            START_LIMIT: [MessageHandler(Filters.text, start_setlimit),]
         },
 
         fallbacks=[CommandHandler("cancel", cancel)]
@@ -376,4 +414,5 @@ def main():
 if __name__ == "__main__":
     # Wait 10 seconds until network is available
     sleep(10)
+    print("H")
     main()
