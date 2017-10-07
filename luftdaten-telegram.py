@@ -15,7 +15,6 @@ logging.basicConfig(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         level=logging.INFO,
         filename=config.log_location + "/luftdaten-telegram.log")
-        # filename=os.path.dirname(os.path.realpath(__file__)) + "/logs/luftdaten-telegram.log")
 logger = logging.getLogger(__name__)
 
 # Setup sentry error tracking

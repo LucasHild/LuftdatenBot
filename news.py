@@ -10,7 +10,6 @@ logging.basicConfig(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         level=logging.INFO,
         filename=config.log_location + "/news.log")
-        # filename=os.path.dirname(os.path.realpath(__file__)) + "/logs/news.log")
 logger = logging.getLogger(__name__)
 
 # Setup sentry error tracking

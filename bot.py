@@ -20,7 +20,6 @@ logging.basicConfig(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         level=logging.INFO,
         filename=config.log_location + "/bot.log")
-        # filename=os.path.dirname(os.path.realpath(__file__)) + "/logs/bot.log")
 logger = logging.getLogger(__name__)
 
 # Conversation Handler States
