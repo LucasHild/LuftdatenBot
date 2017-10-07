@@ -1,20 +1,25 @@
 #!/usr/bin/python3
 # luftdaten-telegram.py
 
-import modules
 import config
-from telegram.ext import Updater
 import logging
+import modules
 import os
 
+from raven import Client
+from telegram.ext import Updater
 
 updater = Updater(token=config.bottoken)
 
 logging.basicConfig(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         level=logging.INFO,
-        filename=os.path.dirname(os.path.realpath(__file__)) + "/logs/luftdaten-telegram.log")
+        filename=config.log_location + "/luftdaten-telegram.log")
+        # filename=os.path.dirname(os.path.realpath(__file__)) + "/logs/luftdaten-telegram.log")
 logger = logging.getLogger(__name__)
+
+# Setup sentry error tracking
+client = Client(config.sentry_token)
 
 if __name__ == "__main__":
     logger.info("Started luftdaten-telegram.py")

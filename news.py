@@ -1,15 +1,20 @@
 import config
-import sqlite3
 import logging
-from telegram.ext import Updater
 import os
+import sqlite3
 
+from raven import Client
+from telegram.ext import Updater
 
 logging.basicConfig(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         level=logging.INFO,
-        filename=os.path.dirname(os.path.realpath(__file__)) + "/logs/news.log")
+        filename=config.log_location + "/news.log")
+        # filename=os.path.dirname(os.path.realpath(__file__)) + "/logs/news.log")
 logger = logging.getLogger(__name__)
+
+# Setup sentry error tracking
+client = Client(config.sentry_token)
 
 updater = Updater(token=config.bottoken)
 

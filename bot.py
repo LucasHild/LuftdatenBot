@@ -1,6 +1,7 @@
 import location_modules
 import logging
 import os
+from raven import Client
 import requests
 import sqlite3
 import telegram
@@ -9,6 +10,7 @@ import config
 import modules
 
 from math import atan2, cos, radians, sin, sqrt
+from functools import wraps
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler
 from time import sleep
 
@@ -17,12 +19,39 @@ from time import sleep
 logging.basicConfig(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         level=logging.INFO,
-        filename=os.path.dirname(os.path.realpath(__file__)) + "/logs/bot.log")
+        filename=config.log_location + "/bot.log")
+        # filename=os.path.dirname(os.path.realpath(__file__)) + "/logs/bot.log")
 logger = logging.getLogger(__name__)
 
+# Conversation Handler States
 START_SENSORID, START_LIMIT = range(2)
 
+# Setup sentry error tracking
+client = Client(config.sentry_token)
 
+def catch_error(f):
+    """Function runs before handling a request"""
+    @wraps(f)
+    def wrap(bot, update):
+        logger.info("User {user} sent {message}".format(user=update.message.from_user.username, message=update.message.text))
+        try:
+            return f(bot, update)
+        except Exception as e:
+            # Add info to error tracking
+            client.user_context({
+                "username": update.message.from_user.username,
+                "message": update.message.text
+            })
+
+            client.captureException()
+            logger.error(str(e))
+            bot.send_message(chat_id=update.message.chat_id,
+                             text="Ein Fehler ist aufgetreten! Ich kümmere mich darum ...")
+
+    return wrap
+
+
+@catch_error
 def start(bot, update):
     # Check whether chat_id is already in database
     conn = sqlite3.connect(config.database_location)
@@ -38,7 +67,7 @@ def start(bot, update):
                          text="Du hast schon alles eingerichtet! Falls Du deine Daten bearbeiten möchtest, wähle /setsensorid oder /setlimit.")
         return ConversationHandler.END
 
-    logger.info("User {user} called /start".format(user=update.message.from_user.username))
+    logger.info("Bot welcomes user {user}".format(user=update.message.from_user.username))
     bot.send_message(chat_id=update.message.chat_id,
                      text="Herzlich Willkommen bei [Luftdaten-Notification](https://github.com/Lanseuo/Luftdaten-Notification)!")
     bot.send_message(chat_id=update.message.chat_id,
@@ -46,6 +75,7 @@ def start(bot, update):
     return START_SENSORID
 
 
+@catch_error
 def start_setsensorid(bot, update):
     sensor_id = update.message.text
     chat_id = update.message.chat_id
@@ -72,7 +102,7 @@ def start_setsensorid(bot, update):
         conn.close()
         bot.send_message(chat_id=update.message.chat_id,
                          text="Deine Sensor-ID (" + sensor_id + ") wurde erfolgreich festgelegt!")
-        logger.info("User {user} set sensor_id {sensor_id} with /start".format(user=update.message.from_user.username, sensor_id=sensor_id))
+        logger.info("User {user} set sensor_id  to {sensor_id}".format(user=update.message.from_user.username, sensor_id=sensor_id))
 
     else:
         logger.info("User {user} registered with wrong sensor_id {sensor_id}".format(user=update.message.from_user.username, sensor_id=sensor_id))
@@ -85,6 +115,7 @@ def start_setsensorid(bot, update):
     return START_LIMIT
 
 
+@catch_error
 def start_setsensorid_location(bot, update):
     logger.info("User {user} sent location: {latitude} {longitude} at /start to setsensorid".format(user=update.message.from_user.username,
                                                                            latitude=str(
@@ -148,6 +179,7 @@ Messung: {value} Partikel pro m3
     return START_LIMIT
 
 
+@catch_error
 def start_setlimit(bot, update):
     limitation = update.message.text
     chat_id = update.message.chat_id
@@ -165,6 +197,7 @@ def start_setlimit(bot, update):
     return ConversationHandler.END
 
 
+@catch_error
 def setsensorid(bot, update):
     try:
         sensor_id = update.message.text.split(" ")[1]
@@ -213,6 +246,7 @@ def setsensorid(bot, update):
     return ConversationHandler.END
 
 
+@catch_error
 def setlimit(bot, update):
     try:
         limitation = update.message.text.split(" ")[1]
@@ -252,6 +286,7 @@ def setlimit(bot, update):
     return ConversationHandler.END
 
 
+@catch_error
 def getvalue(bot, update):
     chat_id = update.message.chat_id
 
@@ -276,8 +311,8 @@ def getvalue(bot, update):
     return ConversationHandler.END
 
 
+@catch_error
 def details(bot, update):
-    logger.info("User {user} asked for details".format(user=update.message.from_user.username))
     chat_id = update.message.chat_id
     conn = sqlite3.connect(config.database_location)
     c = conn.cursor()
@@ -305,6 +340,7 @@ def details(bot, update):
     return ConversationHandler.END
 
 
+@catch_error
 def location(bot, update):
     logger.info("User {user} sent location: {latitude} {longitude}".format(user=update.message.from_user.username,
                                                                            latitude=str(update.message.location["latitude"]),
@@ -339,6 +375,7 @@ Schicke mir /setsensorid {closest_sensor}, um ihn als deinen Hauptsensor festzul
     return ConversationHandler.END
 
 
+@catch_error
 def help(bot, update):
     help_message = """
 Ich schicke dir eine Nachricht, wenn der Feinstaubgehalt deines Sensors über ein bestimmtes Limit steigt.
@@ -352,19 +389,19 @@ Du hast folgende Möglichkeiten:
 /getvalue - aktueller Wert deines Sensors
 /details - Details über deinen Sensor
     """
-    logger.info("User {user} asked for help".format(user=update.message.from_user.username))
     bot.send_message(chat_id=update.message.chat_id, text=help_message)
 
     return ConversationHandler.END
 
 
+@catch_error
 def not_command(bot, update):
-    logger.info("User {user} sent unknown command: {command}".format(user=update.message.from_user.username, command=update.message.text))
     bot.send_message(chat_id=update.message.chat_id,
                      text="Leider kenne ich diesen Befehl mit. Verwende /help um alle Befehle zu sehen.")
     return ConversationHandler.END
 
 
+@catch_error
 def cancel(bot, update):
     logger.info("User {user} canceled the conversation.".format(user=update.message.from_user.username))
     bot.send_message(chat_id=update.message.chat_id,
@@ -377,6 +414,7 @@ def error_callback(bot, update, error):
         raise error
     except Exception as e:
         logger.error(str(e))
+        client.captureException()
 
 
 def main():
@@ -414,5 +452,5 @@ def main():
 if __name__ == "__main__":
     # Wait 10 seconds until network is available
     sleep(10)
-    print("H")
+    print("Started bot")
     main()
