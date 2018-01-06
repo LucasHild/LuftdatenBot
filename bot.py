@@ -26,7 +26,8 @@ logger = logging.getLogger(__name__)
 START_SENSORID, START_LIMIT = range(2)
 
 # Setup sentry error tracking
-client = Client(config.sentry_token)
+if config.sentry_token:
+    client = Client(config.sentry_token)
 
 def catch_error(f):
     """Function runs before handling a request"""
@@ -68,7 +69,7 @@ def start(bot, update):
 
     logger.info("Bot welcomes user {user}".format(user=update.message.from_user.username))
     bot.send_message(chat_id=update.message.chat_id,
-                     text="Herzlich Willkommen bei [Luftdaten-Notification](https://github.com/Lanseuo/Luftdaten-Notification)!")
+                     text="Herzlich Willkommen zum [LuftdatenBot](https://github.com/Lanseuo/LuftdatenBot)!")
     bot.send_message(chat_id=update.message.chat_id,
                      text="Wie lautet deine Sensor-ID? Schicke mir deine ID oder sende mir deinen Standort!")
     return START_SENSORID
