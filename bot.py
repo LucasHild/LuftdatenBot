@@ -1,17 +1,16 @@
-import location_modules
 import logging
-import os
-from raven import Client
 import requests
 import sqlite3
 import telegram
 
+import check_values
 import config
+import location_modules
 import modules
 
-from math import atan2, cos, radians, sin, sqrt
 from functools import wraps
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler
+from raven import Client
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler, JobQueue
 from time import sleep
 
 
@@ -446,8 +445,14 @@ def main():
     dispatcher.add_handler(conv_handler)
     dispatcher.add_error_handler(error_callback)
 
+    # Add queue to check every 5 minutes for a to exceeding value
+    jobs = JobQueue(updater.bot)
+    jobs.run_repeating(check_values.check, 300, context={"logger": logger, "client": client})
+    jobs.start()
+
     updater.start_polling()
     updater.idle()
+
 
 if __name__ == "__main__":
     # Wait 10 seconds until network is available
