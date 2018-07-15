@@ -52,6 +52,8 @@ def catch_error(f):
             bot.send_message(chat_id=update.message.chat_id,
                              text="Ein Fehler ist aufgetreten! Ich kümmere mich darum ...")
 
+            client.context.clear()
+
     return wrap
 
 
