@@ -16,9 +16,9 @@ from time import sleep
 
 # Setup logging
 logging.basicConfig(
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        level=logging.INFO,
-        filename=config.log_location + "/bot.log")
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO,
+    filename=config.log_location + "/bot.log")
 logger = logging.getLogger(__name__)
 
 # Conversation Handler States
@@ -26,13 +26,18 @@ START_SENSORID, START_LIMIT = range(2)
 
 # Setup sentry error tracking
 if config.sentry_token:
-    client = Client(config.sentry_token)
+    client = Client(
+        config.sentry_token,
+        ignore_exceptions=["TimedOut"]
+    )
+
 
 def catch_error(f):
     """Function runs before handling a request"""
     @wraps(f)
     def wrap(bot, update):
-        logger.info("User {user} sent {message}".format(user=update.message.from_user.username, message=update.message.text))
+        logger.info("User {user} sent {message}".format(
+            user=update.message.from_user.username, message=update.message.text))
         try:
             return f(bot, update)
         except Exception as e:
@@ -55,18 +60,21 @@ def start(bot, update):
     # Check whether chat_id is already in database
     conn = sqlite3.connect(config.database_location)
     c = conn.cursor()
-    c.execute("SELECT * FROM users WHERE chat_id = ?", (int(update.message.chat_id),))
+    c.execute("SELECT * FROM users WHERE chat_id = ?",
+              (int(update.message.chat_id),))
     fetched_users = c.fetchall()
     c.close()
     conn.close()
 
     if fetched_users != []:
-        logger.info("User {user} called /start although he is already in the database".format(user=update.message.from_user.username))
+        logger.info("User {user} called /start although he is already in the database".format(
+            user=update.message.from_user.username))
         bot.send_message(chat_id=update.message.chat_id,
                          text="Du hast schon alles eingerichtet! Falls Du deine Daten bearbeiten möchtest, wähle /setsensorid oder /setlimit.")
         return ConversationHandler.END
 
-    logger.info("Bot welcomes user {user}".format(user=update.message.from_user.username))
+    logger.info("Bot welcomes user {user}".format(
+        user=update.message.from_user.username))
     bot.send_message(chat_id=update.message.chat_id,
                      text="Herzlich Willkommen zum [LuftdatenBot](https://github.com/Lanseuo/LuftdatenBot)!")
     bot.send_message(chat_id=update.message.chat_id,
@@ -101,10 +109,12 @@ def start_setsensorid(bot, update):
         conn.close()
         bot.send_message(chat_id=update.message.chat_id,
                          text="Deine Sensor-ID (" + sensor_id + ") wurde erfolgreich festgelegt!")
-        logger.info("User {user} set sensor_id  to {sensor_id}".format(user=update.message.from_user.username, sensor_id=sensor_id))
+        logger.info("User {user} set sensor_id  to {sensor_id}".format(
+            user=update.message.from_user.username, sensor_id=sensor_id))
 
     else:
-        logger.info("User {user} registered with wrong sensor_id {sensor_id}".format(user=update.message.from_user.username, sensor_id=sensor_id))
+        logger.info("User {user} registered with wrong sensor_id {sensor_id}".format(
+            user=update.message.from_user.username, sensor_id=sensor_id))
         bot.send_message(chat_id=update.message.chat_id,
                          text="Sensor " + sensor_id + " ist nicht verfügbar! Überprüfe deine Sensor ID und führe gebe die ID erneut ein!")
         return START_SENSORID
@@ -117,10 +127,10 @@ def start_setsensorid(bot, update):
 @catch_error
 def start_setsensorid_location(bot, update):
     logger.info("User {user} sent location: {latitude} {longitude} at /start to setsensorid".format(user=update.message.from_user.username,
-                                                                           latitude=str(
-                                                                               update.message.location["latitude"]),
-                                                                           longitude=str(
-                                                                               update.message.location["longitude"])))
+                                                                                                    latitude=str(
+                                                                                                        update.message.location["latitude"]),
+                                                                                                    longitude=str(
+                                                                                                        update.message.location["longitude"])))
 
     chat_id = update.message.chat_id
 
@@ -134,13 +144,15 @@ def start_setsensorid_location(bot, update):
     sensors = r.json()
 
     # Get the sensor with the smallest distance to search_pos
-    closest_sensor, closest_sensor_pos = location_modules.closest_sensor(search_pos, sensors)
+    closest_sensor, closest_sensor_pos = location_modules.closest_sensor(
+        search_pos, sensors)
 
     # Calculate distance between sensor_pos and closest_sensor
     distance = location_modules.distance(search_pos, closest_sensor_pos)
 
     # Send response to user
-    bot.send_location(chat_id=update.message.chat_id, latitude=closest_sensor_pos[0], longitude=closest_sensor_pos[1])
+    bot.send_location(chat_id=update.message.chat_id,
+                      latitude=closest_sensor_pos[0], longitude=closest_sensor_pos[1])
     response = """
 Dieser Sensor wurde als dein Hauptsensor eingerichtet:
 
@@ -171,7 +183,8 @@ Messung: {value} Partikel pro m3
     c.close()
     conn.close()
 
-    logger.info("User {user} set sensor_id {sensor_id} with location at /start".format(user=update.message.from_user.username, sensor_id=sensor_id))
+    logger.info("User {user} set sensor_id {sensor_id} with location at /start".format(
+        user=update.message.from_user.username, sensor_id=sensor_id))
 
     bot.send_message(chat_id=update.message.chat_id,
                      text="Bei welchem Limit möchtest Du benachrichtigt werden?")
@@ -185,13 +198,15 @@ def start_setlimit(bot, update):
 
     conn = sqlite3.connect(config.database_location)
     c = conn.cursor()
-    c.execute("UPDATE users SET limitation = (?) WHERE chat_id = (?)", (limitation, chat_id))
+    c.execute("UPDATE users SET limitation = (?) WHERE chat_id = (?)",
+              (limitation, chat_id))
     conn.commit()
     c.close()
     conn.close()
     bot.send_message(chat_id=update.message.chat_id,
                      text="Dein Limit (" + limitation + "), bei dem Du benachrichtigt wirst, wurde erfolgreich geändert!")
-    logger.info("User {user} set limit to {limit} with /start".format(user=update.message.from_user.username, limit=limitation))
+    logger.info("User {user} set limit to {limit} with /start".format(
+        user=update.message.from_user.username, limit=limitation))
 
     return ConversationHandler.END
 
@@ -223,24 +238,29 @@ def setsensorid(bot, update):
 
         # User didn't already /start
         if fetched_users == []:
-            logger.info("User {user} called /setsensorid not being in the database".format(user=update.message.from_user.username))
-            bot.send_message(chat_id=update.message.chat_id, text="Richte mich erst einmal mit /start ein!")
+            logger.info("User {user} called /setsensorid not being in the database".format(
+                user=update.message.from_user.username))
+            bot.send_message(chat_id=update.message.chat_id,
+                             text="Richte mich erst einmal mit /start ein!")
             return ConversationHandler.END
 
         conn = sqlite3.connect(config.database_location)
         c = conn.cursor()
-        c.execute("UPDATE users SET sensor_id = (?) WHERE chat_id = (?)", (sensor_id, chat_id))
+        c.execute("UPDATE users SET sensor_id = (?) WHERE chat_id = (?)",
+                  (sensor_id, chat_id))
         conn.commit()
         c.close()
         conn.close()
         bot.send_message(chat_id=update.message.chat_id,
                          text="Deine Sensor-ID (" + sensor_id + ") wurde erfolgreich verändert!")
         logger.info("User {user} updated sensor_id to {sensor_id} with /setsensorid".format(user=update.message.from_user.username,
-                                                                          sensor_id=sensor_id))
+                                                                                            sensor_id=sensor_id))
 
     else:
-        logger.info("User {user} registered with wrong sensor_id {sensor_id}".format(user=update.message.from_user.username, sensor_id=sensor_id))
-        bot.send_message(chat_id=update.message.chat_id, text="Sensor " + sensor_id + " ist nicht verfügbar! Überprüfe deine Sensor ID und führe den Befehl erneut aus!")
+        logger.info("User {user} registered with wrong sensor_id {sensor_id}".format(
+            user=update.message.from_user.username, sensor_id=sensor_id))
+        bot.send_message(chat_id=update.message.chat_id, text="Sensor " + sensor_id +
+                         " ist nicht verfügbar! Überprüfe deine Sensor ID und führe den Befehl erneut aus!")
 
     return ConversationHandler.END
 
@@ -251,7 +271,8 @@ def setlimit(bot, update):
         limitation = update.message.text.split(" ")[1]
     except IndexError:
         # Only command given (no value)
-        logger.info("User {user} called /setlimit without value".format(user=update.message.from_user.username))
+        logger.info(
+            "User {user} called /setlimit without value".format(user=update.message.from_user.username))
         bot.send_message(chat_id=update.message.chat_id,
                          text="Du musst einen Wert angeben! Beispiel: /setlimit 50")
         return ConversationHandler.END
@@ -268,19 +289,23 @@ def setlimit(bot, update):
     conn.close()
 
     if fetched_users == []:
-        logger.info("User {user} called /setlimit not being in the database".format(user=update.message.from_user.username))
-        bot.send_message(chat_id=update.message.chat_id, text="Richte mich erst einmal mit /start ein!")
+        logger.info("User {user} called /setlimit not being in the database".format(
+            user=update.message.from_user.username))
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="Richte mich erst einmal mit /start ein!")
         return ConversationHandler.END
 
     conn = sqlite3.connect(config.database_location)
     c = conn.cursor()
-    c.execute("UPDATE users SET limitation = (?) WHERE chat_id = (?)", (limitation, chat_id))
+    c.execute("UPDATE users SET limitation = (?) WHERE chat_id = (?)",
+              (limitation, chat_id))
     conn.commit()
     c.close()
     conn.close()
     bot.send_message(chat_id=update.message.chat_id,
                      text="Dein Limit (" + limitation + "), bei dem Du benachrichtigt wirst, wurde erfolgreich geändert!")
-    logger.info("User {user} set limit to {limit} with /setlimit".format(user=update.message.from_user.username, limit=limitation))
+    logger.info("User {user} set limit to {limit} with /setlimit".format(
+        user=update.message.from_user.username, limit=limitation))
 
     return ConversationHandler.END
 
@@ -300,12 +325,16 @@ def getvalue(bot, update):
     if fetched_users != []:
         sensor_id = fetched_users[0][1]
         value = modules.get_value(sensor_id)
-        bot.send_message(chat_id=update.message.chat_id, text="Aktuell misst dein Feinstaub-Sensor *" + str(value) + " Partikel* pro m3.", parse_mode=telegram.ParseMode.MARKDOWN)
-        logger.info("User {user} called /getvalue".format(user=update.message.from_user.username))
+        bot.send_message(chat_id=update.message.chat_id, text="Aktuell misst dein Feinstaub-Sensor *" +
+                         str(value) + " Partikel* pro m3.", parse_mode=telegram.ParseMode.MARKDOWN)
+        logger.info(
+            "User {user} called /getvalue".format(user=update.message.from_user.username))
 
     else:
-        logger.info("User {user} called /getvalue not being in the database".format(user=update.message.from_user.username))
-        bot.send_message(chat_id=update.message.chat_id, text="Du musst mich zuerst mit /start einrichten!")
+        logger.info("User {user} called /getvalue not being in the database".format(
+            user=update.message.from_user.username))
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="Du musst mich zuerst mit /start einrichten!")
 
     return ConversationHandler.END
 
@@ -325,7 +354,8 @@ def details(bot, update):
     if fetched_users == []:
         logger.info(
             "User {user} called /setsensorid not being in the database".format(user=update.message.from_user.username))
-        bot.send_message(chat_id=update.message.chat_id, text="Richte mich erst einmal mit /start ein!")
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="Richte mich erst einmal mit /start ein!")
         return ConversationHandler.END
 
     user = fetched_users[0]
@@ -342,7 +372,8 @@ def details(bot, update):
 @catch_error
 def location(bot, update):
     logger.info("User {user} sent location: {latitude} {longitude}".format(user=update.message.from_user.username,
-                                                                           latitude=str(update.message.location["latitude"]),
+                                                                           latitude=str(
+                                                                               update.message.location["latitude"]),
                                                                            longitude=str(update.message.location["longitude"])))
     # Get position from message
     search_lat = update.message.location["latitude"]
@@ -354,13 +385,15 @@ def location(bot, update):
     sensors = r.json()
 
     # Get the sensor with the smallest distance to search_pos
-    closest_sensor, closest_sensor_pos = location_modules.closest_sensor(search_pos, sensors)
+    closest_sensor, closest_sensor_pos = location_modules.closest_sensor(
+        search_pos, sensors)
 
     # Calculate distance between sensor_pos and closest_sensor
     distance = location_modules.distance(search_pos, closest_sensor_pos)
 
     # Send response to user
-    bot.send_location(chat_id=update.message.chat_id, latitude=closest_sensor_pos[0], longitude=closest_sensor_pos[1])
+    bot.send_location(chat_id=update.message.chat_id,
+                      latitude=closest_sensor_pos[0], longitude=closest_sensor_pos[1])
     response = """
 Nächster Sensor: {closest_sensor}
 Entfernung: {distance}
@@ -402,7 +435,8 @@ def not_command(bot, update):
 
 @catch_error
 def cancel(bot, update):
-    logger.info("User {user} canceled the conversation.".format(user=update.message.from_user.username))
+    logger.info("User {user} canceled the conversation.".format(
+        user=update.message.from_user.username))
     bot.send_message(chat_id=update.message.chat_id,
                      text="Abgebrochen ...")
     return ConversationHandler.END
@@ -436,7 +470,7 @@ def main():
         states={
             START_SENSORID: [MessageHandler(Filters.text, start_setsensorid),
                              MessageHandler(Filters.location, start_setsensorid_location)],
-            START_LIMIT: [MessageHandler(Filters.text, start_setlimit),]
+            START_LIMIT: [MessageHandler(Filters.text, start_setlimit), ]
         },
 
         fallbacks=[CommandHandler("cancel", cancel)]
@@ -447,7 +481,8 @@ def main():
 
     # Add queue to check every 5 minutes for a to exceeding value
     jobs = JobQueue(updater.bot)
-    jobs.run_repeating(check_values.check, 300, context={"logger": logger, "client": client})
+    jobs.run_repeating(check_values.check, 300, context={
+                       "logger": logger, "client": client})
     jobs.start()
 
     updater.start_polling()
