@@ -3,7 +3,7 @@
 ![](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)
 [![](https://img.shields.io/badge/Telegram-Bot-83bdfc.svg?style=flat-square)](http://t.me/LuftdatenBot)
 
-A telegram bot ([@LuftdatenBot](http://t.me/LuftdatenBot)) which can be used with a respirable dust sensor by [Luftdaten.info](http://luftdaten.info/). You can access your data via telegram and you'll get a notification if the value exceeds a limit.
+A Telegram bot ([@LuftdatenBot](http://t.me/LuftdatenBot)) which can be used with a respirable dust sensor by [Luftdaten.info](http://luftdaten.info/). You can access your data via Telegram and you'll get a notification if the value exceeds a limit.
 
 ## Installation
 
@@ -33,7 +33,7 @@ mv config-sample.py config.py
 ## Usage
 
 ```
-python3 bot.py
+python3 run.py
 ```
 
 ## Made with
@@ -43,5 +43,5 @@ python3 bot.py
 
 ## Meta
 
-Lucas Hild - [https://lucas-hild.de](https://lucas.hild.de)  
+Lucas Hild - [https://lucas-hild.de](https://lucas-hild.de)  
 This project is licensed under the MIT License - see the LICENSE file for details
